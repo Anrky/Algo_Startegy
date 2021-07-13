@@ -1,0 +1,270 @@
+//@version=4
+strategy("Moving Average Buy/Sell Indicator", overlay=true)
+
+o = security(syminfo.tickerid, timeframe.period, open)
+h = security(syminfo.tickerid, timeframe.period, high)
+l = security(syminfo.tickerid, timeframe.period, low)
+c = security(syminfo.tickerid, timeframe.period, close)
+
+avg_price = (o + h + l + c)/ 4
+
+moving_average = input(title="Moving Average", type=input.integer, defval=21, minval=10, maxval=250)
+
+s21ema = ema(close, moving_average)
+
+s21ma = sma(close, moving_average)
+
+sellsignal = (s21ema > avg_price) and (s21ma > avg_price) and (s21ma > s21ema)
+buysignal = (s21ema < avg_price) and (s21ma < avg_price) and (s21ma < s21ema)
+
+sellseries = sellsignal and crossover(s21ma, s21ema)
+buyseries = buysignal and crossunder(s21ma, s21ema)
+
+plotshape(series=sellseries, title="Short", style=shape.triangledown, location=location.abovebar, color=color.red, text="SHORT", size=size.small)
+
+plotshape(series=buyseries, title="Long", style=shape.triangleup, location=location.belowbar, color=color.green, text="LONG", size=size.small)
+
+if buysignal
+    strategy.entry("Long",true,comment = "Long Entry")
+if sellsignal
+    strategy.close("Long",comment = "Long Exit")
+
+
+
+//@version=4
+strategy("Simple MACD strategy ", overlay=true, margin_long=100, margin_short=100)
+
+
+fast_length = input(title="Fast Length", type=input.integer, defval=12)
+slow_length = input(title="Slow Length", type=input.integer, defval=26)
+src = input(title="Source", type=input.source, defval=close)
+signal_length = input(title="Signal Smoothing", type=input.integer, minval = 1, maxval = 50, defval = 9)
+sma_source = input(title="Simple MA (Oscillator)", type=input.bool, defval=false)
+sma_signal = input(title="Simple MA (Signal Line)", type=input.bool, defval=false)
+// Plot colors
+col_grow_above = #26A69A
+col_grow_below = #FFCDD2
+col_fall_above = #B2DFDB
+col_fall_below = #EF5350
+col_macd = #0094ff
+col_signal = #ff6a00
+// Calculating
+fast_ma = sma_source ? sma(src, fast_length) : ema(src, fast_length)
+slow_ma = sma_source ? sma(src, slow_length) : ema(src, slow_length)
+macd = fast_ma - slow_ma
+signal = sma_signal ? sma(macd, signal_length) : ema(macd, signal_length)
+hist = macd - signal
+
+
+movinga2 = input(title="movinga 2", type=input.integer, defval=200)
+
+movinga200 = sma(close, movinga2)
+
+plot(movinga200, "MA", color.orange)
+longCondition = crossover(macd, signal) and macd < 0 and signal < 0 and close > movinga200
+if (longCondition)
+    strategy.entry("My Long Entry Id", strategy.long)
+
+shortCondition = crossunder(macd, signal) and macd > 0 and signal > 0 and close < movinga200
+if (shortCondition)
+    strategy.entry("My Short Entry Id", strategy.short)
+    
+shortProfitPerc = input(title="Short Take Profit (%)", minval=0.0, step=0.1, defval=2) / 100
+longProfitPerc = input(title="Long Take Profit (%)", minval=0.0, step=0.1, defval=2) / 100
+    
+stoploss = input(title="stoploss in %", minval = 0.0, step=1, defval=2) /100
+
+longStoploss = strategy.position_avg_price * (1 - stoploss)
+longExitPrice  = strategy.position_avg_price * (1 + longProfitPerc)
+
+shortExitPrice = strategy.position_avg_price * (1 - shortProfitPerc)
+shortStoploss = strategy.position_avg_price * (1 + stoploss)
+    
+if (strategy.position_size > 0 )
+    strategy.exit(id="XL TP", limit=longExitPrice, stop=longStoploss)
+
+
+
+
+// @version=4
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Bunghole 2020
+strategy(default_qty_type = strategy.percent_of_equity, default_qty_value = 100, pyramiding = 0, title="MACD Long Strategy", overlay=true, shorttitle="MACD Long Strategy", currency = 'USD', initial_capital = 100000)
+
+
+// Stoploss and Profits Inputs
+enable = input(false, title="Enable Just a Stoploss Level?")
+enable_takeprofit = input(false, title="Enable Just a Profit Level?")
+both = input(false, title="Enable Both?(If enabled, please disable upper boxes stoploss and profit.)")
+stoploss_input = input(1.0, title='Stop Loss %', type=input.float, minval=0)/100
+takeprofit_input = input(2.0, title='Take Profit %', type=input.float, minval=0)/100
+stoploss_level = strategy.position_avg_price * (1 - stoploss_input)
+takeprofit_level = strategy.position_avg_price * (1 + takeprofit_input)
+plot(enable and stoploss_input and stoploss_level ? stoploss_level: na, color=color.red, style=plot.style_linebr, linewidth=2, title="Stoploss")
+plot(enable_takeprofit and takeprofit_input ? takeprofit_level: na, color=color.green, style=plot.style_linebr, linewidth=2, title="Profit")
+plot(both and stoploss_input and stoploss_level ? stoploss_level: na, color=color.red, style=plot.style_linebr, linewidth=2, title="Stoploss")
+plot(both and takeprofit_input ? takeprofit_level: na, color=color.green, style=plot.style_linebr, linewidth=2, title="Profit")
+
+// RSI INPUTS
+RSIOverSold = input(30, minval=1, title="RSI Over Sold Level")
+RSIOverBought = input(70, minval=1, title="RSI Over Bought Level")
+src = close
+len = input(14, minval=1, title="RSI Line Length")
+up = rma(max(change(src), 0), len)
+down = rma(-min(change(src), 0), len)
+rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - 100 / (1 + up / down)
+wasOversold = rsi[0] <= RSIOverSold or rsi[1] <= RSIOverSold or rsi[2] <= RSIOverSold or rsi[3] <= RSIOverSold or rsi[4] <= RSIOverSold or rsi[5] <= RSIOverSold
+wasOverbought = rsi[0] >= RSIOverBought or rsi[1] >= RSIOverBought or rsi[2] >= RSIOverBought or rsi[3] >= RSIOverBought or rsi[4] >= RSIOverBought or rsi[5] >= RSIOverBought
+
+
+// MACD INPUTS
+FastMA = input(title="MACD FastMA", type=input.integer, defval=12)
+SlowMA = input(title="MACD SlowMA", type=input.integer, defval=26)
+Signal = input(title="MACD Signal Line", type=input.integer, minval = 1, maxval = 50, defval = 9)
+Source = input(title="Source", type=input.source, defval=close)
+[currMacd, _, _] = macd(close[0], FastMA, SlowMA, Signal)
+[prevMacd, _, _] = macd(close[1], FastMA, SlowMA, Signal)
+signal = ema(currMacd, 9)
+avg_1 = avg(currMacd, signal)
+crossoverBear = cross(currMacd, signal) and currMacd < signal ? avg_1 : na
+avg_2 = avg(currMacd, signal)
+crossoverBull = cross(currMacd, signal) and currMacd > signal ? avg_2 : na
+
+
+// EMA INPUTS
+a = input(false, title="Enable EMA 1")
+b = input(false, title="Enable EMA 2")
+c = input(false, title="Enable EMA 3")
+d = input(false, title="Enable EMA 4")
+e = input(false, title="Enable EMA 5")
+lena = input(9, minval=1, title="Length EMA 1")
+srca = input(close, title="Source EMA 1")
+lenb = input(21, minval=1, title="Length EMA 2")
+srcb = input(close, title="Source EMA 2")
+lenc = input(50, minval=1, title="Length EMA 3")
+srcc = input(close, title="Source EMA 3")
+lend = input(100, minval=1, title="Length EMA 4")
+srcd = input(close, title="Source EMA 4")
+lene = input(200, minval=1, title="Length EMA 5")
+srce = input(close, title="Source EMA 5")
+outa = ema(srca, lena)
+outb = ema(srcb, lenb)
+outc = ema(srcc, lenc)
+outd = ema(srcd, lend)
+oute = ema(srce, lene)
+plot(a and outa ? outa: na, title="EMA 1", color=color.yellow)
+plot(b and outb ? outb: na, title="EMA 2", color=color.teal)
+plot(c and outc ? outc: na, title="EMA 3", color=color.orange)
+plot(d and outd ? outd: na, title="EMA 4", color=color.green, linewidth=2)
+plot(e and oute ? oute: na, title="EMA 5", color=color.blue, linewidth=2)
+
+// Strategy Long
+strategy.risk.allow_entry_in(strategy.direction.long)
+Long = wasOversold and crossoverBull
+exitLong = wasOverbought and crossoverBear
+
+strategy.entry("Long", strategy.long, when = Long, alert_message = "Buy!")
+strategy.close("Long", when = exitLong)
+if enable == true
+    strategy.exit("Stop Loss", "Long", stop = stoploss_level)
+if enable_takeprofit == true
+    strategy.exit("TP", "Long", limit = takeprofit_level)
+if both == true
+    strategy.exit("Stoploss/TP", "Long", stop = stoploss_level, limit = takeprofit_level)
+
+
+alertcondition(Long, title='Enter MACD/RSI Long', message='Enter Trade!')
+alertcondition(exitLong, title='Exit MACD/RSI', message='Time to exit trade!')
+
+
+
+
+if (strategy.position_size < 0 )
+    strategy.exit(id="XS TP", limit=shortExitPrice, stop=shortStoploss)
+
+
+
+
+//@version=4
+strategy("RSI-VWAP INDICATOR", overlay=false, initial_capital = 1000, currency = "USD", pyramiding = 5, default_qty_type = strategy.cash, default_qty_value = 1000, commission_value = 0.04)
+
+// ================================================================================================================================================================================
+// RSI VWAP INDICATOR
+// ================================================================================================================================================================================
+
+// Initial inputs
+Act_RSI_VWAP = input(true, "RSI VOLUME WEIGHTED AVERAGE PRICE")
+RSI_VWAP_length = input(17, "RSI-VWAP LENGTH")
+RSI_VWAP_overSold = input(19, "RSI-VWAP OVERSOLD", type=input.float)
+RSI_VWAP_overBought = input(80, "RSI-VWAP OVERBOUGHT", type=input.float)
+
+// RSI with VWAP as source
+RSI_VWAP = rsi(vwap(close), RSI_VWAP_length)
+
+// Plotting, overlay=false
+r=plot(RSI_VWAP, color = RSI_VWAP > RSI_VWAP_overBought ? color.red : RSI_VWAP < RSI_VWAP_overSold ? color.lime : color.blue, title="rsi", linewidth=2, style=plot.style_line)
+h1=plot(RSI_VWAP_overBought, color = color.gray, style=plot.style_stepline)
+h2=plot(RSI_VWAP_overSold, color = color.gray, style=plot.style_stepline)
+fill(r,h1, color = RSI_VWAP > RSI_VWAP_overBought ? color.red : na, transp = 60)
+fill(r,h2, color = RSI_VWAP < RSI_VWAP_overSold ? color.lime : na, transp = 60)
+
+// Long only Backtest
+strategy.entry("Long", strategy.long, when = (crossover(RSI_VWAP, RSI_VWAP_overSold)))
+strategy.close("Long", when = (crossunder(RSI_VWAP, RSI_VWAP_overBought)))
+
+
+
+//
+// @author LazyBear 
+// List of all my indicators: https://www.tradingview.com/v/4IneGo8h/
+//
+//@version=2
+strategy(shorttitle = "SQZMOM_LB", title="Squeeze Momentum Indicator [LazyBear]", overlay=false)
+ 
+length = input(20, title="BB Length")
+mult = input(2.0,title="BB MultFactor")
+lengthKC=input(20, title="KC Length")
+multKC = input(1.5, title="KC MultFactor")
+ 
+useTrueRange = input(true, title="Use TrueRange (KC)", type=bool)
+ 
+// Calculate BB
+source = close
+basis = sma(source, length)
+dev = mult * stdev(source, length)
+upperBB = basis + dev
+lowerBB = basis - dev
+ 
+// Calculate KC
+ma = sma(source, lengthKC)
+range = useTrueRange ? tr : (high - low)
+rangema = sma(range, lengthKC)
+upperKC = ma + rangema * multKC
+lowerKC = ma - rangema * multKC
+ 
+sqzOn  = (lowerBB > lowerKC) and (upperBB < upperKC)
+sqzOff = (lowerBB < lowerKC) and (upperBB > upperKC)
+noSqz  = (sqzOn == false) and (sqzOff == false)
+ 
+val = linreg(source  -  avg(avg(highest(high, lengthKC), lowest(low, lengthKC)),sma(close,lengthKC)),lengthKC,0)
+ 
+bcolor = iff( val > 0,iff( val > nz(val[1]), lime, green),iff( val < nz(val[1]), red, maroon))
+scolor = noSqz ? blue : sqzOn ? black : gray 
+plot(val, color=bcolor, style=histogram, linewidth=4)
+plot(0, color=scolor, style=cross, linewidth=2)
+
+long_buy_condition = bcolor == lime and sqzOff
+long_sell_condition = bcolor == green
+
+if (long_buy_condition)
+    strategy.entry("Long",true,comment = "Long Entry")
+if (long_sell_condition)
+    strategy.close("Long")
+    
+short_buy_condition = bcolor == red and sqzOff
+short_sell_condition = bcolor == maroon
+
+if (short_buy_condition)
+    strategy.entry("Short",true,comment = "Short Entry")
+if (short_sell_condition)
+    strategy.close("Short")
