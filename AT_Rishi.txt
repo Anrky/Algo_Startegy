@@ -1,0 +1,153 @@
+Rishi Salunke
+
+With the given code for RSI. I used it on HDFC Bank and found that the highest profit with lower dropdown was  at RSImin = 23 and RSImax = 68 gave 
+a net profit of 12.74%, 2.78 profit factor and max drawdon 3.5%.
+//@version=4
+strategy("RSI Strategy",overlay = true)
+rsi_14 = rsi(close,14)
+
+rsimin = input(23)
+rsimax = input(58)
+
+
+buycondition = rsi_14 < rsimin and  rsi_14[1] > rsimin[1]
+sellcondition = rsi_14 > rsimax and  rsi_14[1] < rsimax[1]
+
+if buycondition
+    strategy.entry("Long",true,comment = "Long Entry")
+if sellcondition
+    strategy.close("Long",comment = "Long Exit")
+
+
+
+Then I workeed and tried on the following RSI Scripts:
+1) KINSKI RSI Short/Long
+2) MACD + Stochastic + RSI (Long + Short)
+3) Example of Simple RSI Buy/Sell at a level and hold for 10 days
+4) Improved simple RSI Buy/Sell at a level (SL/TP)
+5) Double Relative Strength Index
+
+I also added a scrip tthat will help identify oversold and overbought by changing candle colors. A Yellow bar color is shown when price is overbought and a blue bar color is shown when price is oversold.
+
+//@version=4
+study("Maverick Simple RSI", overlay=true)
+
+length   = input(15, "Length")
+ob = input(70, "Overbought")
+os = input(30, "Oversold")
+
+rsi = rsi(close, length)
+
+var color col = na
+if crossover(rsi, ob)
+    col := color.yellow
+if crossunder(rsi, os)
+    col := color.blue
+if crossover(rsi, os) or crossunder(rsi, ob)
+    col := na
+    
+barcolor(col)
+
+
+For ADX I worked with the given code and tried different inputs. I used ADX with DMI(Directional Movement Index to better understand +DM and -DM and ADX. Following contains DMI with ADX.
+I understood the given ADX code. It calculates the average over the last specified days and helps understand the strength of a trend. In laymans terms it tells us whether to buy or not and not when to buy or sell unlike RSi.
+//@version=4
+study(title="Directional Movement Index", shorttitle="DMI", format=format.price, precision=4, resolution="")
+lensig = input(14, title="ADX Smoothing", minval=1, maxval=50)
+len = input(14, minval=1, title="DI Length")
+up = change(high)
+down = -change(low)
+plusDM = na(up) ? na : (up > down and up > 0 ? up : 0)
+minusDM = na(down) ? na : (down > up and down > 0 ? down : 0)
+trur = rma(tr, len)
+plus = fixnan(100 * rma(plusDM, len) / trur)
+minus = fixnan(100 * rma(minusDM, len) / trur)
+sum = plus + minus
+adx = 100 * rma(abs(plus - minus) / (sum == 0 ? 1 : sum), lensig)
+plot(adx, color=#FF006E, title="ADX")
+plot(plus, color=#0094FF, title="+DI")
+plot(minus, color=#FF6A00, title="-DI")
+
+
+And Also worked with ADX and RSI Combo
+/////////////////////////////////////////////////////////////
+//  ADX and RSI Combination
+/////////////////////////////////////////////////////////////
+//@version=2
+study(title="ADX and RSI Combo", shorttitle="ADX&RSI")
+src = close, len1 = input(2, minval=1, title="RSI1 Length")
+len2 = input(5, minval=1, title="RSI2 Length")
+
+// RSI Setup
+rs1=input(title="Simple RSI #1", type=bool, defval=true)
+rs2=input(title="Simple RSI #2", type=bool, defval=true)
+
+up = if rs1
+    sma(max(change(src), 0), len1)
+else
+    rma(max(change(src), 0), len1)
+
+down = if rs1      
+    sma(-min(change(src), 0), len1)
+else
+    rma(-min(change(src), 0), len1)
+  
+up2 = if rs2
+    sma(max(change(src), 0), len2)
+else
+    rma(max(change(src), 0), len2)
+
+down2 = if rs2      
+    sma(-min(change(src), 0), len2)
+else
+    rma(-min(change(src), 0), len2)    
+
+rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - (100 / (1 + up / down))
+rsi2 = down2 == 0 ? 100 : up2 == 0 ? 0 : 100 - (100 / (1 + up2 / down2))
+plot(rsi, color=purple, title="RSI1", linewidth=1)
+plot(rsi2, color=purple, title="RSI2", linewidth=4)
+band1 = hline(85)
+band0 = hline(15)
+fill(band1, band0, color=purple, transp=90)
+
+
+len = input(title="ADX Length", type=integer, defval=5)
+
+TrueRange = max(max(high-low, abs(high-nz(close[1]))), abs(low-nz(close[1])))
+DirectionalMovementPlus = high-nz(high[1]) > nz(low[1])-low ? max(high-nz(high[1]), 0): 0
+DirectionalMovementMinus = nz(low[1])-low > high-nz(high[1]) ? max(nz(low[1])-low, 0): 0
+
+
+SmoothedTrueRange = nz(SmoothedTrueRange[1]) - (nz(SmoothedTrueRange[1])/len) + TrueRange
+SmoothedDirectionalMovementPlus = nz(SmoothedDirectionalMovementPlus[1]) - (nz(SmoothedDirectionalMovementPlus[1])/len) + DirectionalMovementPlus
+SmoothedDirectionalMovementMinus = nz(SmoothedDirectionalMovementMinus[1]) - (nz(SmoothedDirectionalMovementMinus[1])/len) + DirectionalMovementMinus
+
+DIPlus = SmoothedDirectionalMovementPlus / SmoothedTrueRange * 100
+DIMinus = SmoothedDirectionalMovementMinus / SmoothedTrueRange * 100
+DX = abs(DIPlus-DIMinus) / (DIPlus+DIMinus)*100
+ADX = sma(DX, len)
+
+plot(DIPlus, color=green, title="DI+")
+plot(DIMinus, color=red, title="DI-")
+plot(ADX, color=black, title="ADX")
+
+
+I also worked with price-action :
+
+study("Revolution Price Action Indicator", overlay=true)
+a = high-low > high[1]-low[1] and close > open[1]
+b = high-low > high[1]-low[1] and close < open[1]
+plotchar(a, location=location.abovebar, char="O", color=green)
+plotchar(b, location=location.belowbar, char="O", color=red)
+
+c = high > high[1]
+d = low < low[1]
+plotchar(c, location=location.abovebar, char="-", color=green)
+plotchar(d, location=location.belowbar, char="-", color=red)
+
+e = close-open > close[1]-open[1] and close > open[1]
+f = close-open < close[1]-open[1] and close < open[1]
+plotchar(e, location=location.abovebar, char="I", color=green)
+plotchar(f, location=location.belowbar, char="I", color=red)
+
+
